@@ -29,7 +29,7 @@ public class StorageBlobServiceImpl extends ServiceImpl<StorageBlobMapper, Stora
 
     private final StorageProperties properties;
 
-    @Value("${spring.mvc.servlet.path}")
+    @Value("${spring.mvc.servlet.path:}")
     private String routePrefix = "";
 
     public StorageBlobServiceImpl(AmazonS3 amazonS3, StorageProperties properties) {
