@@ -51,9 +51,7 @@ public class StorageAutoConfiguration {
     public StorageBlobService storageBlobService(AmazonS3 amazonS3) {
         return new StorageBlobServiceImpl(
                 amazonS3,
-                properties.getBucketName(),
-                properties.getServiceName(),
-                properties.getExpireTime()
+                properties
         );
     }
 

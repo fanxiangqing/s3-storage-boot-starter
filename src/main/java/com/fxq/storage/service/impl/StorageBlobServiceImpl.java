@@ -3,11 +3,13 @@ package com.fxq.storage.service.impl;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.PutObjectResult;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fxq.storage.autoconfigure.StorageProperties;
 import com.fxq.storage.entity.StorageBlob;
 import com.fxq.storage.mapper.StorageBlobMapper;
 import com.fxq.storage.service.StorageBlobService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.StringUtils;
 
 import java.io.File;
@@ -25,17 +27,14 @@ public class StorageBlobServiceImpl extends ServiceImpl<StorageBlobMapper, Stora
 
     private final AmazonS3 amazonS3;
 
-    private final String bucketName;
+    private final StorageProperties properties;
 
-    private final String serviceName;
+    @Value("${spring.mvc.servlet.path}")
+    private String routePrefix = "";
 
-    private final Long expireTime;
-
-    public StorageBlobServiceImpl(AmazonS3 amazonS3, String bucketName, String serviceName, Long expireTime) {
+    public StorageBlobServiceImpl(AmazonS3 amazonS3, StorageProperties properties) {
         this.amazonS3 = amazonS3;
-        this.bucketName = bucketName;
-        this.serviceName = serviceName;
-        this.expireTime = expireTime;
+        this.properties = properties;
     }
 
     @Override
@@ -50,10 +49,10 @@ public class StorageBlobServiceImpl extends ServiceImpl<StorageBlobMapper, Stora
             logger.warn("Unknown file type");
         }
         String key = UUID.randomUUID().toString().replaceAll("-", "");
-        PutObjectResult result = amazonS3.putObject(this.bucketName, key, file);
+        PutObjectResult result = amazonS3.putObject(properties.getBucketName(), key, file);
         StorageBlob blob = new StorageBlob();
         blob.setKey(key);
-        blob.setServiceName(serviceName);
+        blob.setServiceName(properties.getServiceName());
         blob.setFilename(file.getName());
         blob.setContentType(contentType);
         blob.setByteSize(file.length());
@@ -75,7 +74,7 @@ public class StorageBlobServiceImpl extends ServiceImpl<StorageBlobMapper, Stora
         if (StringUtils.isEmpty(blob.getKey())) {
             throw new RuntimeException("The StorageBlob Key is empty");
         }
-        return amazonS3.getUrl(bucketName, blob.getKey()).toString();
+        return amazonS3.getUrl(properties.getBucketName(), blob.getKey()).toString();
     }
 
     @Override
@@ -87,9 +86,9 @@ public class StorageBlobServiceImpl extends ServiceImpl<StorageBlobMapper, Stora
             throw new RuntimeException("The StorageBlob Key is empty");
         }
         return amazonS3.generatePresignedUrl(
-                bucketName,
+                properties.getBucketName(),
                 blob.getKey(),
-                new Date(System.currentTimeMillis() + expireTime)
+                new Date(System.currentTimeMillis() + properties.getExpireTime())
         ).toString();
     }
 
@@ -99,5 +98,26 @@ public class StorageBlobServiceImpl extends ServiceImpl<StorageBlobMapper, Stora
                 .eq(StorageBlob::getKey, key)
                 .last("limit 1")
                 .one();
+    }
+
+    @Override
+    public StorageBlob deleteById(Long id) {
+        StorageBlob blob = this.getById(id);
+        if (blob == null) {
+            throw new RuntimeException("The StorageBlob is empty");
+        }
+        if (!this.removeById(id)) {
+            throw new RuntimeException("Delete StorageBlob failed .");
+        }
+        amazonS3.deleteObject(properties.getBucketName(), blob.getKey());
+        return blob;
+    }
+
+    @Override
+    public String redirectUrl(StorageBlob blob) {
+        if (blob == null) {
+            throw new RuntimeException("The StorageBlob is empty");
+        }
+        return String.format("%s/storage/redirect/%s", routePrefix, blob.getKey());
     }
 }

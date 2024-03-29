@@ -13,11 +13,8 @@ public class StorageProperties {
     private String secretKey;
     private String endpoint;
     private String region;
-
     private String bucketName;
-
     private String serviceName;
-
     private Long expireTime = 600000L;
 
     public String getServiceName() {
@@ -75,4 +72,6 @@ public class StorageProperties {
     public void setRegion(String region) {
         this.region = region;
     }
+
+
 }
