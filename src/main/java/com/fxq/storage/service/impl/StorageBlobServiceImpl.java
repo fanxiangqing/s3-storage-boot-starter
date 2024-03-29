@@ -2,6 +2,7 @@ package com.fxq.storage.service.impl;
 
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.PutObjectResult;
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fxq.storage.autoconfigure.StorageProperties;
 import com.fxq.storage.entity.StorageBlob;
@@ -16,8 +17,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.time.LocalDateTime;
-import java.util.Date;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Created by xiangqing'fan on 2024/03/29
@@ -119,5 +119,41 @@ public class StorageBlobServiceImpl extends ServiceImpl<StorageBlobMapper, Stora
             throw new RuntimeException("The StorageBlob is empty");
         }
         return String.format("%s/storage/redirect/%s", routePrefix, blob.getKey());
+    }
+
+    @Override
+    public boolean removeById(StorageBlob blob) {
+        if (blob == null) {
+            throw new RuntimeException("The StorageBlob is empty");
+        }
+        amazonS3.deleteObject(properties.getBucketName(), blob.getKey());
+        return super.removeById(blob);
+    }
+
+    @Override
+    public boolean removeByMap(Map<String, Object> columnMap) {
+        this.listByMap(columnMap).forEach(blob -> amazonS3.deleteObject(properties.getBucketName(), blob.getKey()));
+        return super.removeByMap(columnMap);
+    }
+
+    @Override
+    public boolean remove(Wrapper<StorageBlob> queryWrapper) {
+        this.list(queryWrapper).forEach(blob -> amazonS3.deleteObject(properties.getBucketName(), blob.getKey()));
+        return super.remove(queryWrapper);
+    }
+
+    @Override
+    public boolean removeByIds(Collection<?> list, boolean useFill) {
+        return super.removeByIds(list, useFill);
+    }
+
+    @Override
+    public boolean removeBatchByIds(Collection<?> list) {
+        return super.removeBatchByIds(list);
+    }
+
+    @Override
+    public boolean removeBatchByIds(Collection<?> list, boolean useFill) {
+        return super.removeBatchByIds(list, useFill);
     }
 }
